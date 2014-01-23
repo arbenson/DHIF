@@ -13,7 +13,7 @@ public:
 #ifndef RELEASE
         CallStackEntry entry("NumTns::NumTns");
 #endif
-        allocate();
+        Allocate();
     }
 
     NumTns(int m, int n, int p, bool owndata, F* data): _m(m), _n(n), _p(p),
@@ -22,7 +22,7 @@ public:
         CallStackEntry entry("NumTns::NumTns");
 #endif
         if (_owndata) {
-            allocate();
+            Allocate();
             if (ValidDimensions()) {
                 for (int i = 0; i < _m * _n * _p; ++i) {
                     _data[i] = data[i];
@@ -39,8 +39,8 @@ public:
         CallStackEntry entry("NumTns::NumTns");
 #endif
         if (_owndata) {
-            allocate();
-            fill(C);
+            Allocate();
+            Fill(C);
         } else {
             _data = C._data;
         }
@@ -51,7 +51,7 @@ public:
         CallStackEntry entry("NumTns::~NumTns");
 #endif
         if (_owndata)
-            deallocate();
+            Deallocate();
     }
 
     NumTns& operator=(const NumTns& C) {
@@ -59,31 +59,31 @@ public:
         CallStackEntry entry("NumTns::operator=");
 #endif
         if (_owndata)
-            deallocate();
+            Deallocate();
         _m = C._m;
         _n = C._n;
         _p = C._p;
         _owndata = C._owndata;
         if (_owndata) {
-            allocate();
-            fill(C);
+            Allocate();
+            Fill(C);
         } else {
             _data = C._data;
         }
         return *this;
     }
 
-    void resize(int m, int n, int p)  {
+    void Resize(int m, int n, int p)  {
 #ifndef RELEASE
-        CallStackEntry entry("NumTns::resize");
+        CallStackEntry entry("NumTns::Resize");
 #endif
         assert( _owndata );
         if (_m != m || _n != n || _p != p) {
-            deallocate();
+            Deallocate();
             _m = m;
             _n = n;
             _p = p;
-            allocate();
+            Allocate();
         }
     }
 
@@ -136,9 +136,9 @@ private:
 
     inline bool ValidDimensions() const { return _m > 0 && _n > 0 && _p > 0; }
 
-    void allocate() {
+    void Allocate() {
 #ifndef RELEASE
-        CallStackEntry entry("NumTns::allocate");
+        CallStackEntry entry("NumTns::Allocate");
 #endif
         if (ValidDimensions()) {
             _data = new F[_m * _n * _p];
@@ -148,9 +148,9 @@ private:
         }
     }
 
-    void deallocate() {
+    void Deallocate() {
 #ifndef RELEASE
-        CallStackEntry entry("NumTns::deallocate");
+        CallStackEntry entry("NumTns::Deallocate");
 #endif
         if (ValidDimensions()) {
             delete[] _data;
@@ -158,9 +158,9 @@ private:
         }
     }
 
-    void fill(const NumTns& C) {
+    void Fill(const NumTns& C) {
 #ifndef RELEASE
-        CallStackEntry entry("NumTns::fill");
+        CallStackEntry entry("NumTns::Fill");
 #endif
         if (ValidDimensions()) {
             for (int i = 0; i < _m * _n * _p; ++i) {
@@ -189,7 +189,7 @@ template <class F> inline std::ostream& operator<<(std::ostream& os,
     return os;
 }
 
-template <class F> inline void setvalue(NumTns<F>& T, F val) {
+template <class F> inline void SetValue(NumTns<F>& T, F val) {
 #ifndef RELEASE
     CallStackEntry entry("setvalue");
 #endif
@@ -203,7 +203,7 @@ template <class F> inline void setvalue(NumTns<F>& T, F val) {
   return;
 }
 
-template <class F> inline double energy(NumTns<F>& T) {
+template <class F> inline double Energy(NumTns<F>& T) {
 #ifndef RELEASE
     CallStackEntry entry("energy");
 #endif
