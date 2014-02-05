@@ -7,141 +7,16 @@ project(DHIF)
 set(DHIF_VERSION_MAJOR 0)
 set(DHIF_VERSION_MINOR 2)
 
-option(RELEASE "Avoid unnecessary assertions." ON)
 option(TIME_MULTIPLY "Instrument HIF with timers." OFF)
 
-option(BUILD_TESTS "Build the test drivers" ON)
-option(AVOID_COMPLEX_MPI "Avoid complex MPI routines for robustness" ON)
+option(DHIF_TESTS "Build the test drivers" ON)
 
 option(MEMORY_INFO "Collect memory infomation during the code." OFF)
-mark_as_advanced(AVOID_COMPLEX_MPI)
 
-if(RELEASE)
-    set(CXX_FLAGS "-O3" CACHE STRING "CXX flags")
-else()
-    set(CXX_FLAGS "-g -Wall" CACHE STRING "CXX flags")
-endif()
-
-find_package(MPI)
-if(NOT MPI_CXX_FOUND)
-  message(FATAL_ERROR "MPI C++ compiler was not found and is required")
-endif()
+add_subdirectory(${PROJECT_SOURCE_DIR}/external/Elemental)
+include_directories(${PROJECT_BINARY_DIR}/external/Elemental/include)
 include_directories(${MPI_CXX_INCLUDE_PATH})
-set(EXTRA_FLAGS "${MPI_CXX_COMPILE_FLAGS}")
-
-# Now append the extra flags
-set(CMAKE_CXX_FLAGS "${CXX_FLAGS} ${EXTRA_FLAGS}")
-
-if(NOT MATH_LIBS)
-  set(MATH_DESC "BLAS/LAPACK link flags")
-  # Look for default BLAS/LAPACK
-  set(REFERENCE_REQUIRED LAPACK BLAS)
-  find_library(BLAS_LIB
-               NAMES blas blas.a blas.lib
-               PATHS ${REFERENCE_ROOT})
-  find_library(LAPACK_LIB
-               NAMES lapack lapack.a lapack.lib
-                     reflapack reflapack.a reflapack.lib
-               PATHS ${REFERENCE_ROOT})
-  set(REFERENCE_FOUND ON)
-  set(MATH_LIBS "")
-  foreach(NAME ${REFERENCE_REQUIRED})
-    if( ${NAME}_LIB )
-      message(STATUS "Found ${NAME}_LIB: ${${NAME}_LIB}")
-      list(APPEND MATH_LIBS ${${NAME}_LIB})
-    else()
-      message(STATUS "Could not find ${NAME}_LIB")
-      set(REFERENCE_FOUND OFF)
-    endif()
-  endforeach()
-  message(STATUS "REFERENCE_FOUND=${REFERENCE_FOUND}")
-  if(REFERENCE_FOUND)
-    message(STATUS "WARNING: Using reference BLAS/LAPACK.")
-    message(STATUS "MATH_LIBS=${MATH_LIBS}")
-  else()
-    set(MATH_LIBS "" CACHE STRING ${MATH_DESC})
-    message(FATAL_ERROR
-      "Could not find BLAS/LAPACK libs. Please provide the root directory of MKL with -DMKL_ROOT, the directory of reference implementations with -DREFERENCE_ROOT, or manually specify all math libraries with -DMATH_LIBS. There are numerous idiosyncratic library dependencies for BLAS/LAPACK, so you will almost certainly need to manually specify -DMATH_LIBS.")
-  endif()
-  # Append the standard math libraries to the link list.
-  list(APPEND MATH_LIBS m)
-endif()
-
-# Attempt to detect the BLAS and LAPACK underscore conventions.
-# We currently only handle whether or not there is an underscore appended.
-include(CheckFunctionExists)
-set(CMAKE_REQUIRED_LIBRARIES ${MATH_LIBS})
-check_function_exists(daxpy  HAVE_DAXPY)
-check_function_exists(daxpy_ HAVE_DAXPY_POST)
-if(HAVE_DAXPY)
-  set(BLAS_POST FALSE)
-  set(BLAS_DEFS "")
-elseif(HAVE_DAXPY_POST)
-  set(BLAS_POST TRUE)
-  set(BLAS_DEFS "-DBLAS_POST")
-else()
-  message(FATAL_ERROR "Could not determine BLAS format.")
-endif()
-check_function_exists(dpotrf  HAVE_DPOTRF)
-check_function_exists(dpotrf_ HAVE_DPOTRF_POST)
-if(HAVE_DPOTRF)
-  set(LAPACK_POST FALSE)
-  set(LAPACK_DEFS "")
-elseif(HAVE_DPOTRF_POST)
-  set(LAPACK_POST TRUE)
-  set(LAPACK_DEFS "-DLAPACK_POST")
-else()
-  message(FATAL_ERROR "Could not determine LAPACK format.")
-endif()
-
-# Look for MPI_Reduce_scatter_block (and MPI_Reduce_scatter as sanity check)
-set(CMAKE_REQUIRED_FLAGS "${MPI_C_COMPILE_FLAGS} ${MPI_C_LINK_FLAGS}")
-set(CMAKE_REQUIRED_INCLUDES ${MPI_C_INCLUDE_PATH})
-set(CMAKE_REQUIRED_LIBRARIES ${MPI_C_LIBRARIES})
-check_function_exists(MPI_Reduce_scatter       HAVE_MPI_REDUCE_SCATTER)
-if(NOT HAVE_MPI_REDUCE_SCATTER)
-  message(FATAL_ERROR "Could not find MPI_Reduce_scatter")
-endif()
-# Check for MPI_IN_PLACE (essentially MPI2 support)
-include(CheckCSourceCompiles)
-set(MPI_IN_PLACE_CODE
-    "#include \"mpi.h\"
-     int main( int argc, char* argv[] )
-     {
-         MPI_Init( &argc, &argv );
-         float a;
-         MPI_Allreduce
-         ( MPI_IN_PLACE, &a, 1, MPI_FLOAT, MPI_SUM, MPI_COMM_WORLD );
-         MPI_Finalize();
-         return 0;
-     }")
-check_c_source_compiles("${MPI_IN_PLACE_CODE}" HAVE_MPI_IN_PLACE)
-if(NOT HAVE_MPI_IN_PLACE)
-  message(FATAL_ERROR "Could not find MPI_IN_PLACE")
-endif()
-
-# Look for restrict support
-include(CheckCXXSourceCompiles)
-set(RESTRICT_CODE "int main(void) { int* RESTRICT a; return 0; }")
-set(CMAKE_REQUIRED_DEFINITIONS "-DRESTRICT=__restrict__")
-check_cxx_source_compiles("${RESTRICT_CODE}" HAVE___restrict__)
-set(CMAKE_REQUIRED_DEFINITIONS "-DRESTRICT=__restrict")
-check_cxx_source_compiles("${RESTRICT_CODE}" HAVE___restrict)
-set(CMAKE_REQUIRED_DEFINITIONS "-DRESTRICT=restrict")
-check_cxx_source_compiles("${RESTRICT_CODE}" HAVE_restrict)
-if(HAVE___restrict__)
-  set(RESTRICT "__restrict__")
-  message(STATUS "Using __restrict__ keyword.")
-elseif(HAVE___restrict)
-  set(RESTRICT "__restrict")
-  message(STATUS "Using __restrict keyword.")
-elseif(HAVE_restrict)
-  set(RESTRICT "restrict")
-  message(STATUS "Using restrict keyword.")
-else()
-  set(RESTRICT "")
-  message(STATUS "Could not find a restrict keyword.")
-endif()
+set(ELEM_CMAKE_DIR ${PROJECT_SOURCE_DIR}/external/Elemental/cmake)
 
 # Store all of our system-specific definitions
 configure_file(${PROJECT_SOURCE_DIR}/cmake/config.h.cmake
@@ -158,6 +33,11 @@ set(DHIF_SRC "${DHIF_CPP};${DHIF_HEADERS}")
 
 # Build the DHIF source
 add_library(DHIF STATIC ${DHIF_SRC})
+if(MANUAL_ELEMENTAL)
+    target_link_libraries(DHIF ${ELEM_LIBS})
+else()
+    target_link_libraries(DHIF Elemental)
+endif()
 install(TARGETS DHIF DESTINATION lib)
 
 # Copy the headers into the build directory
@@ -179,14 +59,6 @@ add_dependencies(DHIF prepare_DHIF_headers)
 # Make sure the DHIF headers can be found
 include_directories("${PROJECT_BINARY_DIR}/include")
 
-# Create a dummy library in order to be able to force the math libraries
-# to be linked last
-add_library(cmake-dummy-lib STATIC cmake/CMakeDummyFunction.cpp)
-list(APPEND EXTERNAL_LIBS "${MATH_LIBS} ${MPI_CXX_LIBRARIES}")
-target_link_libraries(cmake-dummy-lib ${EXTERNAL_LIBS})
-
-# Build the test drivers if necessary
-set(MPI_LINK_FLAGS "${MPI_CXX_LINK_FLAGS}")
 if(BUILD_TESTS)
   set(TEST_DIR ${PROJECT_SOURCE_DIR}/tests)
 
