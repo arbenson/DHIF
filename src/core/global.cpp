@@ -106,28 +106,6 @@ void DumpCallStack()
 }
 #endif
 
-template<typename Real>
-Real CompressionTolerance();
-
-template<>
-float CompressionTolerance<float>()
-{ return ::compressionTolFloat; }
-
-template<>
-double CompressionTolerance<double>()
-{ return ::compressionTolDouble; }
-
-template<typename Real>
-void SetCompressionTolerance( Real relTol );
-
-template<>
-void SetCompressionTolerance<float>( float relTol )
-{ ::compressionTolFloat = relTol; }
-
-template<>
-void SetCompressionTolerance<double>( double relTol )
-{ ::compressionTolDouble = relTol; }
-
 #ifdef MEMORY_INFO
 void ResetMemoryCount( int key )
 {

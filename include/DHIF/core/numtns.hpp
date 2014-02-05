@@ -236,7 +236,7 @@ template <class F> inline double NumTnsSum(NumTns<F>& T) {
 typedef NumTns<bool>   BolNumTns;
 typedef NumTns<int>    IntNumTns;
 typedef NumTns<double> DblNumTns;
-typedef NumTns<cpx>    CpxNumTns;
+typedef NumTns<std::complex<double> >    CpxNumTns;
 
 }
 #endif  // _NUMTNS_HPP_

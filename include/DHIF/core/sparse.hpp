@@ -10,7 +10,7 @@ class Sparse
 {
 private:
     int height_, width_;
-    std::map<int,std::map<int,Scalar> > sparsemat_;
+    mutable std::map<int,std::map<int,Scalar> > sparsemat_;
 
 public:
     Sparse();
@@ -31,14 +31,13 @@ public:
     void DeleteRow( Vector<int>& iidx );
     void DeleteCol( Vector<int>& jidx );
     void Delete( Vector<int>& iidx, Vector<int>& jidx );
-    Scalar Find( int i, int j );
+    Scalar Find( int i, int j ) const;
     bool Check( int i, int j ) const;
     void Find
-    ( Vector<int>& iidx, Vector<int>& jidx, Dense<Scalar>& res );
-    void Find( int i, Vector<int>& jidx, Vector<Scalar>& res );
-    void Find( Vector<int>& iidx, int j, Vector<Scalar>& res );
+    ( Vector<int>& iidx, Vector<int>& jidx, Dense<Scalar>& res ) const;
+    void Find( int i, Vector<int>& jidx, Vector<Scalar>& res ) const;
+    void Find( Vector<int>& iidx, int j, Vector<Scalar>& res ) const;
     void FindRow( int i, Vector<Scalar>& res) const;
-    void FindRow( int i, Vector<Scalar>& res, Vector<int>& inds);
     void FindCol( int j, Vector<Scalar>& res ) const;
 
     void Clear();
@@ -218,7 +217,7 @@ Sparse<Scalar>::Delete( Vector<int>& iidx, Vector<int>& jidx )
 
 template<typename Scalar>
 inline Scalar
-Sparse<Scalar>::Find( int i, int j )
+Sparse<Scalar>::Find( int i, int j ) const
 {
 #ifndef RELEASE
     CallStackEntry entry("Sparse::Find");
@@ -265,7 +264,7 @@ Sparse<Scalar>::Check( int i, int j ) const
 template<typename Scalar>
 inline void
 Sparse<Scalar>::Find
-( Vector<int>& iidx, Vector<int>& jidx, Dense<Scalar>& D )
+( Vector<int>& iidx, Vector<int>& jidx, Dense<Scalar>& D ) const
 {
 #ifndef RELEASE
     CallStackEntry entry("Sparse::Find");
@@ -276,7 +275,7 @@ Sparse<Scalar>::Find
         int j = jidx.Get(iterj);
         if( sparsemat_.find(j) != sparsemat_.end() )
         {
-	        std::map<int, Scalar>& jcol = sparsemat_[j];
+	        std::map<int, Scalar> & jcol = sparsemat_[j];
             for( int iteri=0; iteri<iidx.Size(); ++iteri )
             {
                 int i = iidx.Get(iteri);
@@ -299,7 +298,7 @@ Sparse<Scalar>::Find
 template<typename Scalar>
 inline void
 Sparse<Scalar>::Find
-( Vector<int>& iidx, int j, Vector<Scalar>& vec )
+( Vector<int>& iidx, int j, Vector<Scalar>& vec ) const
 {
 #ifndef RELEASE
     CallStackEntry entry("Sparse::Find");
@@ -307,7 +306,7 @@ Sparse<Scalar>::Find
     vec.Resize( iidx.Size() );
     if( sparsemat_.find(j) != sparsemat_.end() )
     {
-        std::map<int, Scalar> &jcol = sparsemat_[j];
+        const std::map<int, Scalar> &jcol = sparsemat_[j];
         for( int iteri=0; iteri<iidx.Size(); ++iteri )
         {
             int i = iidx.Get(iteri);
@@ -327,7 +326,7 @@ Sparse<Scalar>::Find
 template<typename Scalar>
 inline void
 Sparse<Scalar>::Find
-( int i, Vector<int>& jidx, Vector<Scalar>& vec )
+( int i, Vector<int>& jidx, Vector<Scalar>& vec ) const
 {
 #ifndef RELEASE
     CallStackEntry entry("Sparse::Find");
@@ -338,7 +337,7 @@ Sparse<Scalar>::Find
         int j = jidx.Get(iterj);
         if( sparsemat_.find(j) != sparsemat_.end() )
         {
-            std::map<int, Scalar> &jcol = sparsemat_[j];
+            const std::map<int, Scalar> &jcol = sparsemat_[j];
             if( jcol.find(i) != jcol.end() )
                 vec.Set(iterj,jcol[i]);
             else
@@ -359,7 +358,7 @@ Sparse<Scalar>::FindCol( int j, Vector<Scalar>& vec ) const
     vec.Resize(height_);
     if( sparsemat_.find(j) != sparsemat_.end() )
     {
-        std::map<int,Scalar> &jcol = sparsemat_[j];
+        const std::map<int,Scalar> &jcol = sparsemat_[j];
         typename std::map<int,Scalar>::iterator it;
         for( it=jcol.begin(); it!=jcol.end(); ++it )
             vec.Set(it->first,it->second);
@@ -377,7 +376,7 @@ Sparse<Scalar>::FindRow( int i, Vector<Scalar>& vec ) const
     typename std::map<int,std::map<int,Scalar> >::iterator it;
     for( it=sparsemat_.begin(); it!=sparsemat_.end(); ++it )
     {
-        std::map<int, Scalar> &jcol = it->second;
+        const std::map<int, Scalar> &jcol = it->second;
         if( jcol.find(i) != jcol.end() )
             vec.Set(it->first,jcol[i]);
     }
