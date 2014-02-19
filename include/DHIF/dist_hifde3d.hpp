@@ -6,7 +6,6 @@
 
 namespace DHIF {
 
-extern Timer timerGlobal;
 // A distributed H-matrix class that assumes a 3d box domain and requires
 // a power of two number of processes. It does not yet support implicit
 // symmetry.
@@ -22,7 +21,7 @@ public:
     class Teams
     {
     private:
-        Vector<mpi::Comm> teams_, crossTeams_;
+        std::vector<mpi::Comm> teams_, crossTeams_;
     public:
         Teams( mpi::Comm comm );
         ~Teams();
@@ -33,16 +32,16 @@ public:
         mpi::Comm CrossTeam( int inverseLevel ) const;
 
         void TreeSums
-        ( Vector<Scalar>& buffer, const Vector<int>& sizes ) const;
+        ( std::vector<Scalar>& buffer, const std::vector<int>& sizes ) const;
 
         void TreeSumToRoots
-        ( Vector<Scalar>& buffer, const Vector<int>& sizes ) const;
+        ( std::vector<Scalar>& buffer, const std::vector<int>& sizes ) const;
 
         void TreeBroadcasts
-        ( Vector<Scalar>& buffer, const Vector<int>& sizes ) const;
+        ( std::vector<Scalar>& buffer, const std::vector<int>& sizes ) const;
 
         void TreeBroadcasts
-        ( Vector<int>& buffer, const Vector<int>& sizes ) const;
+        ( std::vector<int>& buffer, const std::vector<int>& sizes ) const;
     };
 
     /*
@@ -67,7 +66,7 @@ private:
 
     struct Node
     {
-        Vector<DistHIFDE3D*> children;
+        std::vector<DistHIFDE3D*> children;
         Node();
         ~Node();
         DistHIFDE3D& Child( int t );
@@ -93,14 +92,14 @@ private:
     int DOF_;
     bool own_;
 
-    Vector<Vec3T<int> > degreeList_;
+    std::vector<Vec3T<int> > degreeList_;
 
     const Teams* teams_;
     Node node_;
 
-    Dense<Scalar> D_, A_self_;
+    Matrix<Scalar> D_, A_self_;
 
-    Vector<DistHIFDE3D> children_;
+    std::vector<DistHIFDE3D> children_;
 };
 
 //----------------------------------------------------------------------------//
@@ -151,7 +150,7 @@ DistHIFDE3D<Scalar>::Teams::Teams( mpi::Comm comm )
                 ("Must use a power of eight number of processes");
     }
 
-    teams_.Resize( numLevels );
+    teams_.resize( numLevels );
     mpi::CommDup( comm, teams_[0] );
     teamSize = p;
     for( int level=1; level<numLevels; ++level )
@@ -165,7 +164,7 @@ DistHIFDE3D<Scalar>::Teams::Teams( mpi::Comm comm )
         mpi::CommSplit( comm, color, key, teams_[level] );
     }
 
-    crossTeams_.Resize( numLevels );
+    crossTeams_.resize( numLevels );
     mpi::CommDup( teams_[numLevels-1], crossTeams_[0] );
     for( int inverseLevel=1; inverseLevel<numLevels; ++inverseLevel )
     {
@@ -189,21 +188,21 @@ DistHIFDE3D<Scalar>::Teams::~Teams()
 #ifndef RELEASE
     CallStackEntry entry("DistHIFDE3D::Teams::~Teams");
 #endif
-    for( int i=0; i<teams_.Size(); ++i )
+    for( int i=0; i<teams_.size(); ++i )
         mpi::CommFree( teams_[i] );
-    for( int i=0; i<crossTeams_.Size(); ++i )
+    for( int i=0; i<crossTeams_.size(); ++i )
         mpi::CommFree( crossTeams_[i] );
 }
 
 template<typename Scalar>
 inline int
 DistHIFDE3D<Scalar>::Teams::NumLevels() const
-{ return teams_.Size(); }
+{ return teams_.size(); }
 
 template<typename Scalar>
 inline int
 DistHIFDE3D<Scalar>::Teams::TeamLevel( int level ) const
-{ return std::min(level,teams_.Size()-1); }
+{ return std::min(level,int(teams_.size()-1)); }
 
 template<typename Scalar>
 inline mpi::Comm
@@ -216,7 +215,7 @@ DistHIFDE3D<Scalar>::Teams::CrossTeam( int inverseLevel ) const
 {
 #ifndef RELEASE
     CallStackEntry entry("DistHIFDE3D::Teams::CrossTeam");
-    if( inverseLevel >= crossTeams_.Size() )
+    if( inverseLevel >= crossTeams_.size() )
         throw std::logic_error("Invalid cross team request");
 #endif
     return crossTeams_[inverseLevel];
@@ -225,7 +224,7 @@ DistHIFDE3D<Scalar>::Teams::CrossTeam( int inverseLevel ) const
 template<typename Scalar>
 inline void
 DistHIFDE3D<Scalar>::Teams::TreeSums
-( Vector<Scalar>& buffer, const Vector<int>& sizes ) const
+( std::vector<Scalar>& buffer, const std::vector<int>& sizes ) const
 {
 #ifndef RELEASE
     CallStackEntry entry("DistHIFDE3D::Teams::TreeSums");
@@ -258,7 +257,7 @@ DistHIFDE3D<Scalar>::Teams::TreeSums
 template<typename Scalar>
 inline void
 DistHIFDE3D<Scalar>::Teams::TreeSumToRoots
-( Vector<Scalar>& buffer, const Vector<int>& sizes ) const
+( std::vector<Scalar>& buffer, const std::vector<int>& sizes ) const
 {
 #ifndef RELEASE
     CallStackEntry entry("DistHIFDE3D::Teams::TreeSumToRoots");
@@ -296,7 +295,7 @@ DistHIFDE3D<Scalar>::Teams::TreeSumToRoots
 template<typename Scalar>
 inline void
 DistHIFDE3D<Scalar>::Teams::TreeBroadcasts
-( Vector<Scalar>& buffer, const Vector<int>& sizes ) const
+( std::vector<Scalar>& buffer, const std::vector<int>& sizes ) const
 {
 #ifndef RELEASE
     CallStackEntry entry("DistHIFDE3D::Teams::TreeBroadcasts");
@@ -327,7 +326,7 @@ DistHIFDE3D<Scalar>::Teams::TreeBroadcasts
 template<typename Scalar>
 inline void
 DistHIFDE3D<Scalar>::Teams::TreeBroadcasts
-( Vector<int>& buffer, const Vector<int>& sizes ) const
+( std::vector<int>& buffer, const std::vector<int>& sizes ) const
 {
 #ifndef RELEASE
     CallStackEntry entry("DistHIFDE3D::Teams::TreeBroadcasts");
